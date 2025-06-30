@@ -1,9 +1,10 @@
-from sklearn.datasets import load_digits
+# from sklearn.datasets import load_digits
 from sklearn.model_selection import train_test_split
 from mpi4py import MPI
 import numpy as np
 from collections import Counter
 import time
+import pandas as pd
 
 # ----- Función para vecinos locales -----
 def compute_local_neighbors(X_test, X_train_local, y_train_local, k):
@@ -22,8 +23,19 @@ size = comm.Get_size()
 
 # ----- Carga de datos solo en el proceso 0 -----
 if rank == 0:
-    digits = load_digits()
-    X_train, X_test, y_train, y_test = train_test_split(digits.data, digits.target, test_size=0.2, random_state=42)
+    # digits = load_digits()
+    # X_train, X_test, y_train, y_test = train_test_split(digits.data, digits.target, test_size=0.2, random_state=42)
+    N = 16000  # Tamaño del conjunto de datos
+    train_df = pd.read_csv("data/train.csv")
+    train_df = train_df.head(N)
+
+    y = train_df.iloc[:, 0].values
+    X = train_df.iloc[:, 1:].values
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
     k = 3
     start_time = time.time()
     print(X_test.shape)
