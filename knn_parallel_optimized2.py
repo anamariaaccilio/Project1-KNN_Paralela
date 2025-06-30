@@ -23,7 +23,7 @@ def knn_predict(test_point, X_train, y_train, k):
 
 # ---------- Proceso 0 carga los datos ----------
 if rank == 0:
-    N = 16000  # Tamaño del conjunto de datos
+    N = 2000  # Tamaño del conjunto de datos
     train_df = pd.read_csv("data/train.csv")
     train_df = train_df.head(N)
 
@@ -35,7 +35,7 @@ if rank == 0:
     )
 
     k = 3
-    start_time = time.time()
+    start_time = MPI.Wtime()
 
 else:
     X_train = None
@@ -65,7 +65,7 @@ if rank == 0:
     y_pred = [item for sublist in y_pred_all for item in sublist]
     y_test = [item for sublist in y_test_all for item in sublist]
     accuracy = np.mean(np.array(y_pred) == np.array(y_test))
-    end_time = time.time()
+    end_time = MPI.Wtime()
 
     print("\n--- Results (Test Data Distributed Strategy) ---")
     print(f"Accuracy: {accuracy:.4f}")

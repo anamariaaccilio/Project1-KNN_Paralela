@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 import time
 import matplotlib.pyplot as plt
 
-N = 16000  # Tamaño del conjunto de datos
+N = 4000  # Tamaño del conjunto de datos
 
 # -----------------------------
 # Cargar y preparar los datos

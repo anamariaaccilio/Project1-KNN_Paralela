@@ -37,7 +37,7 @@ if rank == 0:
     )
 
     k = 3
-    start_time = time.time()
+    start_time = MPI.Wtime()
     print(X_test.shape)
 else:
     X_train = None
@@ -85,7 +85,7 @@ if rank == 0:
 
     # Evaluar
     accuracy = np.mean(np.array(final_predictions) == np.array(y_test))
-    end_time = time.time()
+    end_time = MPI.Wtime()
 
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Execution time (DAG-based KNN, {size} processes): {end_time - start_time:.4f} sec")
