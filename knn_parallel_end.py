@@ -3,7 +3,6 @@ from sklearn.model_selection import train_test_split
 from mpi4py import MPI
 import numpy as np
 from collections import Counter
-import time
 import pandas as pd
 
 # ----- Función para vecinos locales -----
@@ -21,11 +20,14 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
+tComp = 0
+tComm = 0
+
 # ----- Carga de datos solo en el proceso 0 -----
 if rank == 0:
     # digits = load_digits()
     # X_train, X_test, y_train, y_test = train_test_split(digits.data, digits.target, test_size=0.2, random_state=42)
-    N = 16000  # Tamaño del conjunto de datos
+    N = 4000  # Tamaño del conjunto de datos
     train_df = pd.read_csv("data/train.csv")
     train_df = train_df.head(N)
 
@@ -47,6 +49,7 @@ else:
     k = None
 
 # ----- Broadcast X_test, y_test, k ----- es decir, se envían a todos los procesos
+tComm0 = MPI.Wtime()
 X_test = comm.bcast(X_test if rank == 0 else None, root=0)
 y_test = comm.bcast(y_test if rank == 0 else None, root=0)
 k = comm.bcast(k, root=0)
@@ -54,12 +57,20 @@ k = comm.bcast(k, root=0)
 # ----- Scatter X_train, y_train ----- es decir se divide el train
 X_train_local = comm.scatter(np.array_split(X_train, size) if rank == 0 else None, root=0)
 y_train_local = comm.scatter(np.array_split(y_train, size) if rank == 0 else None, root=0)
+tCommF = MPI.Wtime()
+tComm += tCommF - tComm0
 
 # ----- Cada proceso calcula sus vecinos más cercanos locales -----
+tComp0 = MPI.Wtime()
 local_neighbors = compute_local_neighbors(X_test, X_train_local, y_train_local, k)
+tCompF = MPI.Wtime()
+tComp += tCompF - tComp0
 
 # ----- Enviar vecinos locales al proceso 0 -----
+tComm0 = MPI.Wtime()
 all_neighbors = comm.gather(local_neighbors, root=0)
+tCommF = MPI.Wtime()
+tComm += tCommF - tComm0
 
 '''
 all_neighbors= [ [(0.5, 1), (0.8, 0), (1.2, 1)], proceso 0
@@ -69,7 +80,7 @@ combined = [(0.5, 1), (0.8, 0), (1.2, 1),(0.3, 2), (0.9, 1), (1.0, 2) ]
 # ----- Proceso 0 aplica mayoría -----
 if rank == 0:
     final_predictions = []
-
+    tComp0 = MPI.Wtime()
     for i in range(len(X_test)):
         # Reunir todos los vecinos de todos los procesos para este punto
         combined = []
@@ -82,10 +93,13 @@ if rank == 0:
         # Votar
         vote = Counter(k_labels).most_common(1)[0][0]
         final_predictions.append(vote)
-
+    tCompF = MPI.Wtime()
+    tComp += tCompF - tComp0
     # Evaluar
     accuracy = np.mean(np.array(final_predictions) == np.array(y_test))
     end_time = MPI.Wtime()
 
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Execution time (DAG-based KNN, {size} processes): {end_time - start_time:.4f} sec")
+    print(f"Computation time: {tComp:.4f} sec")
+    print(f"Communication time: {tComm:.4f} sec")

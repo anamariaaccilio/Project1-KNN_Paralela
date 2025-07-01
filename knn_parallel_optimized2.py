@@ -3,12 +3,14 @@ from collections import Counter
 from mpi4py import MPI
 import pandas as pd
 import numpy as np
-import time
 
 # ---------- Inicializar MPI ----------
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
+
+tComp = 0
+tComm = 0
 
 # ---------- Funciones ----------
 def euclidean_distance(a, b):
@@ -45,6 +47,7 @@ else:
     k = None
 
 # ---------- Difundir conjunto de entrenamiento y parámetro ----------
+tComm0 = MPI.Wtime()
 X_train = comm.bcast(X_train if rank == 0 else None, root=0)
 y_train = comm.bcast(y_train if rank == 0 else None, root=0)
 k = comm.bcast(k, root=0)
@@ -52,23 +55,36 @@ k = comm.bcast(k, root=0)
 # ---------- Repartir test entre procesos ----------
 X_test_local = comm.scatter(np.array_split(X_test, size) if rank == 0 else None, root=0)
 y_test_local = comm.scatter(np.array_split(y_test, size) if rank == 0 else None, root=0)
+tCommF = MPI.Wtime()
+tComm += tCommF - tComm0
 
 # ---------- Predicción local ----------
+tComp0 = MPI.Wtime()
 y_pred_local = [knn_predict(x, X_train, y_train, k) for x in X_test_local]
+tCompF = MPI.Wtime()
+tComp += tCompF - tComp0
 
 # ---------- Reunir resultados ----------
+tComm0 = MPI.Wtime()
 y_pred_all = comm.gather(y_pred_local, root=0)
 y_test_all = comm.gather(y_test_local, root=0)
+tCommF = MPI.Wtime()
+tComm += tCommF - tComm0
 
 # ---------- Evaluación final ----------
 if rank == 0:
+    tComp0 = MPI.Wtime()
     y_pred = [item for sublist in y_pred_all for item in sublist]
     y_test = [item for sublist in y_test_all for item in sublist]
+    tCompF = MPI.Wtime()
+    tComp += tCompF - tComp0
     accuracy = np.mean(np.array(y_pred) == np.array(y_test))
     end_time = MPI.Wtime()
 
     print("\n--- Results (Test Data Distributed Strategy) ---")
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Execution time: {end_time - start_time:.4f} sec")
+    print(f"Computation time: {tComp:.4f} sec")
+    print(f"Communication time: {tComm:.4f} sec")
     print(f"Training samples: {len(X_train)}")
     print(f"Test samples: {len(X_test)}")
