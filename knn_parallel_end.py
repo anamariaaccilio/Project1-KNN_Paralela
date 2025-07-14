@@ -99,7 +99,10 @@ if rank == 0:
     accuracy = np.mean(np.array(final_predictions) == np.array(y_test))
     end_time = MPI.Wtime()
 
+    print("\n--- Results (Test Data Distributed Strategy) ---")
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Execution time (DAG-based KNN, {size} processes): {end_time - start_time:.4f} sec")
     print(f"Computation time: {tComp:.4f} sec")
     print(f"Communication time: {tComm:.4f} sec")
+    print(f"Training samples: {len(X_train)}")
+    print(f"Test samples: {len(X_test)}")
